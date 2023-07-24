@@ -193,6 +193,33 @@
 	desc = "The father of all refreshments."
 	icon_state = "glass_clear"
 
+/datum/reagent/water/on_new(data)
+	. = ..()
+	RegisterSignal(holder, COMSIG_REAGENTS_TEMP_CHANGE, PROC_REF(on_temp_change))
+
+#define WATER_BP (100+T0C)
+
+/*
+ * Boiling of water -> steam (aka water vapor).
+ */
+/datum/reagent/water/proc/on_temp_change(datum/reagents/_holder, old_temp)
+	SIGNAL_HANDLER
+	if(holder.chem_temp < WATER_BP)
+		return
+	if(!holder.my_atom)
+		return
+	if(holder.flags & SEALED_CONTAINER)
+		return
+	// To not break things up, must not vaporize when making chemicals.
+	// So, the water boils only when left alone inside a container.
+	if(isnull(holder.reagent_list) || holder.reagent_list.len > 1)
+		return
+	var/atom/A = holder.my_atom
+	A.atmos_spawn_air("[GAS_WATER_VAPOR]=[volume];[TURF_TEMPERATURE(holder.chem_temp)]")
+	holder.del_reagent(type)
+
+#undef WATER_BP
+
 /*
  * Water reaction to turf
  */
@@ -838,7 +865,7 @@
 /datum/reagent/oxygen/expose_turf(turf/open/exposed_turf, reac_volume)
 	. = ..()
 	if(istype(exposed_turf))
-		exposed_turf.atmos_spawn_air("[GAS_O2]=[reac_volume/20];[TURF_TEMPERATURE(holder ? holder.chem_temp : T20C)]")
+		exposed_turf.atmos_spawn_air("[GAS_O2]=[reac_volume];[TURF_TEMPERATURE(holder ? holder.chem_temp : T20C)]")
 	return
 
 /datum/reagent/copper
@@ -881,6 +908,12 @@
 	taste_mult = 0
 	ph = 0.1//Now I'm stuck in a trap of my own design. Maybe I should make -ve phes? (not 0 so I don't get div/0 errors)
 	chemical_flags = REAGENT_CAN_BE_SYNTHESIZED
+
+/datum/reagent/hydrogen/expose_turf(turf/open/exposed_turf, reac_volume)
+	. = ..()
+	if(istype(exposed_turf))
+		exposed_turf.atmos_spawn_air("[GAS_HYDROGEN]=[reac_volume];[TURF_TEMPERATURE(holder ? holder.chem_temp : T20C)]")
+	return
 
 /datum/reagent/potassium
 	name = "Potassium"
@@ -2798,7 +2831,6 @@
 	var/obj/effect/decal/cleanable/ants/pests = exposed_turf.spawn_unique_cleanable(/obj/effect/decal/cleanable/ants)
 	if(!pests)
 		return
-		
 	var/spilled_ants = (round(reac_volume,1) - 5) // To account for ant decals giving 3-5 ants on initialize.
 	pests.reagents.add_reagent(/datum/reagent/ants, spilled_ants)
 	pests.update_ant_damage()
