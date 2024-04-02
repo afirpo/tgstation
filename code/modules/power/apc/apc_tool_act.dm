@@ -77,6 +77,7 @@
 			return
 		toggle_panel_open()
 		balloon_alert(user, "wires [panel_open ? "exposed" : "unexposed"]")
+		W.play_tool_sound(src)
 		update_appearance()
 		return
 
@@ -192,7 +193,6 @@
 		var/obj/item/stock_parts/cell/crap/empty/C = new(src)
 		C.forceMove(src)
 		cell = C
-		chargecount = 0
 		balloon_alert(user, "power cell installed")
 		update_appearance()
 		return TRUE
